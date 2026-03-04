@@ -1,0 +1,89 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Team {
+  id               String   @id @default(cuid())
+  name             String
+  slug             String   @unique
+  photoUrl         String?  @db.Text
+  photoTitle       String?
+  photoDescription String?
+  createdAt        DateTime @default(now())
+
+  players     Player[]
+  matchesWon  Match[]  @relation("MatchWinner")
+  matchesLost Match[]  @relation("MatchLoser")
+}
+
+model Player {
+  id               String   @id @default(cuid())
+  name             String
+  nickname         String?
+  photoUrl         String?  @db.Text
+  photoTitle       String?
+  photoDescription String?
+  teamId           String
+  team             Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdAt        DateTime @default(now())
+}
+
+model Season {
+  id        String   @id @default(cuid())
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  matches Match[]
+  bets    Bet[]
+}
+
+enum MatchMode {
+  SETS
+  GOALS
+}
+
+model Match {
+  id            String    @id @default(cuid())
+  seasonId      String
+  season        Season    @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  playedAt      DateTime  @default(now())
+  winnerTeamId  String
+  winnerTeam    Team      @relation("MatchWinner", fields: [winnerTeamId], references: [id])
+  loserTeamId   String
+  loserTeam     Team      @relation("MatchLoser", fields: [loserTeamId], references: [id])
+  mode          MatchMode
+  winnerScore   Int
+  loserScore    Int
+  notes         String?
+  checksum      String    @unique
+  createdAt     DateTime  @default(now())
+
+  bets Bet[]
+}
+
+enum PayerMode {
+  WINNER
+  LOSER
+  SPLIT
+  MANUAL
+}
+
+model Bet {
+  id          String    @id @default(cuid())
+  seasonId    String
+  season      Season    @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  matchId     String?
+  match       Match?    @relation(fields: [matchId], references: [id], onDelete: SetNull)
+  description String
+  totalCost   Float
+  payerMode   PayerMode
+  costWinner  Float     @default(0)
+  costLoser   Float     @default(0)
+  createdAt   DateTime  @default(now())
+}
