@@ -21,7 +21,7 @@ export async function GET(
 ) {
   const trip = await prisma.trip.findUnique({
     where: { id: params.id },
-    include: { heroMedia: true, media: true, locations: true },
+    include: { heroMedia: true, media: true, locations: { orderBy: { sequence: "asc" } } },
   });
   if (!trip) {
     return NextResponse.json({ error: "Trip non trovato" }, { status: 404 });
@@ -112,10 +112,11 @@ export async function PUT(
     // Update trip locations (map markers)
     if (Array.isArray(locationsList)) {
       await tx.tripLocation.deleteMany({ where: { tripId: params.id } });
-      for (const loc of locationsList) {
+      for (let idx = 0; idx < locationsList.length; idx++) {
+        const loc = locationsList[idx];
         if (typeof loc.lat === "number" && typeof loc.lng === "number") {
           await tx.tripLocation.create({
-            data: { tripId: params.id, lat: loc.lat, lng: loc.lng, label: loc.label || null, category: loc.category || null },
+            data: { tripId: params.id, lat: loc.lat, lng: loc.lng, label: loc.label || null, category: loc.category || null, sequence: loc.sequence ?? idx },
           });
         }
       }
@@ -134,7 +135,7 @@ export async function PUT(
         quote: quote !== undefined ? (quote || null) : existing.quote,
         heroMediaId,
       },
-      include: { heroMedia: true, media: true, locations: true },
+      include: { heroMedia: true, media: true, locations: { orderBy: { sequence: "asc" } } },
     });
   });
 

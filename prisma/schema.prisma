@@ -133,9 +133,11 @@ model TripLocation {
   lng       Float
   label     String?
   category  String?
+  sequence  Int      @default(0)
   createdAt DateTime @default(now())
 
   @@index([tripId])
+  @@index([tripId, sequence])
 }
 
 model TripMedia {

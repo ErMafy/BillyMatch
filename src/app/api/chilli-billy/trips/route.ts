@@ -20,7 +20,7 @@ export async function GET() {
     include: {
       heroMedia: true,
       media: true,
-      locations: true,
+      locations: { orderBy: { sequence: "asc" } },
     },
     orderBy: { startDate: "asc" },
   });
@@ -104,10 +104,11 @@ export async function POST(req: NextRequest) {
 
     // Create trip locations (map markers)
     if (Array.isArray(locationsList)) {
-      for (const loc of locationsList) {
+      for (let idx = 0; idx < locationsList.length; idx++) {
+        const loc = locationsList[idx];
         if (typeof loc.lat === "number" && typeof loc.lng === "number") {
           await tx.tripLocation.create({
-            data: { tripId: newTrip.id, lat: loc.lat, lng: loc.lng, label: loc.label || null, category: loc.category || null },
+            data: { tripId: newTrip.id, lat: loc.lat, lng: loc.lng, label: loc.label || null, category: loc.category || null, sequence: loc.sequence ?? idx },
           });
         }
       }
@@ -115,7 +116,7 @@ export async function POST(req: NextRequest) {
 
     return tx.trip.findUnique({
       where: { id: newTrip.id },
-      include: { heroMedia: true, media: true, locations: true },
+      include: { heroMedia: true, media: true, locations: { orderBy: { sequence: "asc" } } },
     });
   });
 

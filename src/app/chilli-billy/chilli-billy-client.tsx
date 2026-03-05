@@ -1,16 +1,34 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
 import { TripCard } from "@/components/chilli-billy/trip-card";
 import { HighlightReel } from "@/components/chilli-billy/highlight-reel";
+import { SagaCounters, type SagaStats } from "@/components/chilli-billy/saga-counters";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 
 const TravelMap = dynamic(
   () => import("@/components/chilli-billy/travel-map"),
-  { ssr: false, loading: () => <div className="w-full h-[300px] sm:h-[400px] lg:h-[500px] rounded-xl bg-card border border-border animate-pulse" /> }
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-[320px] sm:h-[420px] lg:h-[560px] rounded-xl bg-card border border-border animate-pulse" />
+    ),
+  }
+);
+
+const GlobeView = dynamic(
+  () => import("@/components/chilli-billy/globe-view"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-full bg-black flex items-center justify-center">
+        <span className="text-white/40 text-sm animate-pulse">Caricamento globo...</span>
+      </div>
+    ),
+  }
 );
 
 interface TripLocationData {
@@ -18,6 +36,7 @@ interface TripLocationData {
   lng: number;
   label: string | null;
   category: string | null;
+  sequence?: number;
 }
 
 interface Trip {
@@ -41,9 +60,22 @@ const tabs = [
   { key: "IDEA", label: "Idee" },
 ] as const;
 
-export function ChilliBillyClient({ trips }: { trips: Trip[] }) {
+export function ChilliBillyClient({
+  trips,
+  sagaStats,
+}: {
+  trips: Trip[];
+  sagaStats: SagaStats;
+}) {
   const [activeTab, setActiveTab] = useState<string>("ALL");
   const [search, setSearch] = useState("");
+  const [focusedTripId, setFocusedTripId] = useState<string | null>(null);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [globeMode, setGlobeMode] = useState(false);
+
+  // Refs for IntersectionObserver
+  const tripRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const filtered = useMemo(() => {
     let result = trips;
@@ -63,24 +95,71 @@ export function ChilliBillyClient({ trips }: { trips: Trip[] }) {
     );
   }, [trips, activeTab, search]);
 
-  // Collect all trip locations for the map
-  const mapPins = useMemo(() => {
-    const pins: { lat: number; lng: number; label: string | null; category: string | null; tripTitle: string; tripSlug: string }[] = [];
-    for (const trip of trips) {
-      if (trip.locations) {
-        for (const loc of trip.locations) {
-          pins.push({ lat: loc.lat, lng: loc.lng, label: loc.label, category: loc.category, tripTitle: trip.title, tripSlug: trip.slug });
+  // Trips with locations for the cinematic map
+  const mapTrips = useMemo(
+    () =>
+      trips
+        .filter((t) => t.locations && t.locations.length > 0)
+        .map((t) => ({ ...t, locations: t.locations || [] })),
+    [trips]
+  );
+
+  /* ── IntersectionObserver: sync map with scrolled trip ─────────── */
+  useEffect(() => {
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            const id = entry.target.getAttribute("data-trip-id");
+            if (id) setFocusedTripId(id);
+          }
         }
-      }
+      },
+      { threshold: 0.35, rootMargin: "0px 0px -25% 0px" }
+    );
+
+    for (const trip of filtered) {
+      const el = tripRefs.current.get(trip.id);
+      if (el) io.observe(el);
     }
-    return pins;
-  }, [trips]);
+
+    // Sentinel: zoom out when past all trips
+    const endIo = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setFocusedTripId(null); },
+      { threshold: 0.5 }
+    );
+    const sentinel = sentinelRef.current;
+    if (sentinel) endIo.observe(sentinel);
+
+    return () => {
+      io.disconnect();
+      endIo.disconnect();
+    };
+    // deps: filtered trip ids (stable string if order/content didn't change)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtered.map((t) => t.id).join(",")]);
+
+  /* ── Fullscreen: ESC key + body overflow ───────────────────────── */
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setFullscreen(false);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  useEffect(() => {
+    document.body.style.overflow = fullscreen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [fullscreen]);
+
+  const openFullscreen = useCallback(() => setFullscreen(true), []);
+  const closeFullscreen = useCallback(() => setFullscreen(false), []);
 
   return (
     <div className="space-y-8">
-      {/* ── HERO with Background Media ── */}
+      {/* ── HERO ───────────────────────────────────────────────────── */}
       <section className="relative w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] overflow-hidden">
-        {/* Background media */}
         <div className="absolute inset-0">
           <video
             autoPlay
@@ -92,14 +171,12 @@ export function ChilliBillyClient({ trips }: { trips: Trip[] }) {
           >
             <source src="/chilli-billy/hero/hero.mp4" type="video/mp4" />
           </video>
-          {/* Fallback image via poster + noscript */}
           <img
             src="/chilli-billy/hero/hero.jpg"
             alt=""
             className="absolute inset-0 w-full h-full object-cover hidden"
             aria-hidden="true"
           />
-          {/* Dark gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-background" />
         </div>
 
@@ -131,7 +208,7 @@ export function ChilliBillyClient({ trips }: { trips: Trip[] }) {
         </div>
       </section>
 
-      {/* ── Intro Text ── */}
+      {/* ── Intro Text ─────────────────────────────────────────────── */}
       <motion.section
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -144,18 +221,29 @@ export function ChilliBillyClient({ trips }: { trips: Trip[] }) {
         </p>
       </motion.section>
 
-      {/* ── Highlight Reel ── */}
+      {/* ── Saga Counters ──────────────────────────────────────────── */}
+      <SagaCounters {...sagaStats} />
+
+      {/* ── Highlight Reel ─────────────────────────────────────────── */}
       <HighlightReel />
 
-      {/* ── Travel Map ── */}
-      {mapPins.length > 0 && (
-        <section>
-          <h2 className="text-xl font-bold text-center mb-4">🗺️ Mappa dei Viaggi</h2>
-          <TravelMap pins={mapPins} />
-        </section>
-      )}
+      {/* ── Rotte dei Viaggi (full-width map section) ──────────────── */}
+      <section>
+        <h2 className="text-xl font-bold text-center mb-4">🗺️ Rotte dei Viaggi</h2>
+        {mapTrips.length > 0 ? (
+          <TravelMap
+            trips={mapTrips}
+            focusedTripId={focusedTripId}
+            onRequestFullscreen={openFullscreen}
+          />
+        ) : (
+          <div className="h-[320px] sm:h-[400px] rounded-xl bg-card border border-border flex items-center justify-center">
+            <p className="text-muted-foreground text-sm">Nessuna rotta disponibile ancora 🗺️</p>
+          </div>
+        )}
+      </section>
 
-      {/* ── Filters ── */}
+      {/* ── Filters ─────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row items-center gap-3 justify-between">
         <div className="flex gap-1 flex-wrap">
           {tabs.map((tab) => (
@@ -173,7 +261,10 @@ export function ChilliBillyClient({ trips }: { trips: Trip[] }) {
           ))}
         </div>
         <div className="relative w-full sm:w-64">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Search
+            size={16}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+          />
           <Input
             placeholder="Cerca trip..."
             value={search}
@@ -183,7 +274,7 @@ export function ChilliBillyClient({ trips }: { trips: Trip[] }) {
         </div>
       </div>
 
-      {/* ── Timeline ── */}
+      {/* ── Timeline ─────────────────────────────────────────────────── */}
       {filtered.length === 0 ? (
         <div className="text-center py-16">
           <p className="text-muted-foreground text-lg">Nessun viaggio trovato 🌵</p>
@@ -195,12 +286,15 @@ export function ChilliBillyClient({ trips }: { trips: Trip[] }) {
         </div>
       ) : (
         <div className="relative">
+          {/* Center spine line (desktop only) */}
           <div className="hidden md:block absolute left-1/2 top-0 bottom-0 w-0.5 bg-border -translate-x-1/2" />
 
           <div className="space-y-6 md:space-y-0">
             {filtered.map((trip, i) => (
               <motion.div
                 key={trip.id}
+                ref={(el) => { tripRefs.current.set(trip.id, el); }}
+                data-trip-id={trip.id}
                 initial={{ opacity: 0, y: 40 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: i * 0.08 }}
@@ -238,8 +332,51 @@ export function ChilliBillyClient({ trips }: { trips: Trip[] }) {
               </motion.div>
             ))}
           </div>
+
+          {/* Sentinel: resets map focus when user scrolls past all trips */}
+          <div ref={sentinelRef} className="h-2" />
+        </div>
+      )}
+
+      {/* ── Fullscreen Modal ───────────────────────────────────────── */}
+      {fullscreen && (
+        <div className="fixed inset-0 z-[9999] bg-black flex flex-col">
+          {/* Top bar – flex-none so map starts below it, not underneath */}
+          <div className="flex-none flex items-center justify-between px-4 py-3 bg-black/90 backdrop-blur-sm border-b border-white/10 z-[100]">
+            <span className="text-white font-bold text-sm">
+              🗺️ Rotte dei Viaggi
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setGlobeMode((v) => !v)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 text-white text-xs font-medium hover:bg-white/20 transition-all backdrop-blur-sm"
+              >
+                {globeMode ? "🗺 Mappa" : "🌍 Globo 3D"}
+              </button>
+              <button
+                onClick={closeFullscreen}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 text-white text-xs font-medium hover:bg-white/20 transition-all backdrop-blur-sm"
+              >
+                ✕ Chiudi
+              </button>
+            </div>
+          </div>
+
+          {/* Map fills all remaining height */}
+          <div className="flex-1 min-h-0 overflow-hidden">
+            {globeMode ? (
+              <GlobeView trips={mapTrips} />
+            ) : (
+              <TravelMap
+                trips={mapTrips}
+                focusedTripId={focusedTripId}
+                isFullscreen
+              />
+            )}
+          </div>
         </div>
       )}
     </div>
   );
 }
+
