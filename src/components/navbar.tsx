@@ -13,6 +13,7 @@ const navItems = [
   { href: "/squadre", label: "Squadre" },
   { href: "/match", label: "Match" },
   { href: "/scommesse", label: "Scommesse" },
+  { href: "/chilli-billy", label: "El Chilli Billy" },
   { href: "/admin", label: "Admin" },
 ];
 

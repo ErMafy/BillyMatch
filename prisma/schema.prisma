@@ -87,3 +87,55 @@ model Bet {
   costLoser   Float     @default(0)
   createdAt   DateTime  @default(now())
 }
+
+// ─── EL CHILLI BILLY (Trips) ───
+
+enum TripStatus {
+  PAST
+  UPCOMING
+  IDEA
+}
+
+enum MediaKind {
+  IMAGE
+  VIDEO
+}
+
+enum MediaFit {
+  COVER
+  CONTAIN
+}
+
+model Trip {
+  id          String     @id @default(cuid())
+  title       String
+  slug        String     @unique
+  location    String
+  startDate   DateTime
+  endDate     DateTime?
+  status      TripStatus
+  description String
+  quote       String?
+  createdAt   DateTime   @default(now())
+
+  heroMediaId String?    @unique
+  heroMedia   TripMedia? @relation("HeroMedia", fields: [heroMediaId], references: [id])
+
+  media       TripMedia[] @relation("TripGallery")
+}
+
+model TripMedia {
+  id        String    @id @default(cuid())
+  tripId    String?
+  trip      Trip?     @relation("TripGallery", fields: [tripId], references: [id], onDelete: Cascade)
+
+  kind      MediaKind
+  path      String
+  caption   String?
+  fit       MediaFit  @default(COVER)
+  focalX    Int?      // 0..100, default 50
+  focalY    Int?      // 0..100, default 50
+  createdAt DateTime  @default(now())
+
+  heroOf    Trip?     @relation("HeroMedia")
+}
