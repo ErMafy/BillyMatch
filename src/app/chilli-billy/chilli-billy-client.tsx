@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
 import { TripCard } from "@/components/chilli-billy/trip-card";
+import { HighlightReel } from "@/components/chilli-billy/highlight-reel";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 
@@ -142,6 +143,9 @@ export function ChilliBillyClient({ trips }: { trips: Trip[] }) {
           Esplora la mappa per scoprire tutte le tappe della crew. 🌍
         </p>
       </motion.section>
+
+      {/* ── Highlight Reel ── */}
+      <HighlightReel />
 
       {/* ── Travel Map ── */}
       {mapPins.length > 0 && (
