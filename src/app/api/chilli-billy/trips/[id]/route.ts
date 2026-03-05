@@ -21,7 +21,7 @@ export async function GET(
 ) {
   const trip = await prisma.trip.findUnique({
     where: { id: params.id },
-    include: { heroMedia: true, media: true },
+    include: { heroMedia: true, media: true, locations: true },
   });
   if (!trip) {
     return NextResponse.json({ error: "Trip non trovato" }, { status: 404 });
@@ -41,6 +41,7 @@ export async function PUT(
 
   const body = await req.json();
   const { title, location, startDate, endDate, status, description, quote, heroMedia: heroMediaData, galleryItems, slug: customSlug,
+    locations: locationsList,
     heroMediaPath: legacyHeroPath, galleryPaths: legacyGalleryPaths } = body;
 
   const heroMediaPath = heroMediaData?.path ?? legacyHeroPath;
@@ -108,6 +109,18 @@ export async function PUT(
       }
     }
 
+    // Update trip locations (map markers)
+    if (Array.isArray(locationsList)) {
+      await tx.tripLocation.deleteMany({ where: { tripId: params.id } });
+      for (const loc of locationsList) {
+        if (typeof loc.lat === "number" && typeof loc.lng === "number") {
+          await tx.tripLocation.create({
+            data: { tripId: params.id, lat: loc.lat, lng: loc.lng, label: loc.label || null, category: loc.category || null },
+          });
+        }
+      }
+    }
+
     return tx.trip.update({
       where: { id: params.id },
       data: {
@@ -121,7 +134,7 @@ export async function PUT(
         quote: quote !== undefined ? (quote || null) : existing.quote,
         heroMediaId,
       },
-      include: { heroMedia: true, media: true },
+      include: { heroMedia: true, media: true, locations: true },
     });
   });
 

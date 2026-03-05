@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,7 +23,14 @@ import {
   LogOut,
   Settings2,
   X,
+  MapPin,
 } from "lucide-react";
+import type { LocationMarker } from "@/components/chilli-billy/admin-trip-map";
+
+const AdminTripMap = dynamic(
+  () => import("@/components/chilli-billy/admin-trip-map"),
+  { ssr: false, loading: () => <div className="w-full h-[300px] sm:h-[350px] rounded-xl bg-card border border-border animate-pulse" /> }
+);
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -64,6 +72,7 @@ interface Trip {
   quote?: string | null;
   heroMedia?: TripMedia | null;
   media: TripMedia[];
+  locations?: { lat: number; lng: number; label: string | null; category: string | null }[];
 }
 
 interface FormState {
@@ -76,6 +85,7 @@ interface FormState {
   quote: string;
   heroMedia: HeroMediaData | null;
   galleryItems: GalleryItem[];
+  locations: LocationMarker[];
 }
 
 const emptyForm: FormState = {
@@ -88,6 +98,7 @@ const emptyForm: FormState = {
   quote: "",
   heroMedia: null,
   galleryItems: [],
+  locations: [],
 };
 
 const statusOptions = [
@@ -204,6 +215,12 @@ export default function ChilliBillyAdmin() {
         focalX: m.focalX ?? 50,
         focalY: m.focalY ?? 50,
       })),
+      locations: (t.locations || []).map((loc) => ({
+        lat: loc.lat,
+        lng: loc.lng,
+        label: loc.label || `${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)}`,
+        category: loc.category || "legendary",
+      })),
     });
     setShowHeroSettings(false);
     setEditingGalleryIdx(null);
@@ -237,6 +254,7 @@ export default function ChilliBillyAdmin() {
       quote: form.quote || null,
       heroMedia: form.heroMedia,
       galleryItems: form.galleryItems,
+      locations: form.locations,
     };
 
     try {
@@ -446,6 +464,20 @@ export default function ChilliBillyAdmin() {
             value={form.quote}
             onChange={(e) => setForm((f) => ({ ...f, quote: e.target.value }))}
             placeholder="Una frase leggendaria..."
+          />
+        </div>
+
+        {/* ---- Luoghi sulla Mappa ---- */}
+        <div className="space-y-2">
+          <Label className="flex items-center gap-1.5">
+            <MapPin size={14} /> Luoghi sulla mappa ({form.locations.length})
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            Clicca sulla mappa o seleziona una destinazione per aggiungere un pin.
+          </p>
+          <AdminTripMap
+            markers={form.locations}
+            onChange={(locations) => setForm((f) => ({ ...f, locations }))}
           />
         </div>
 

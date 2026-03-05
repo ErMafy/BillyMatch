@@ -20,6 +20,7 @@ export async function GET() {
     include: {
       heroMedia: true,
       media: true,
+      locations: true,
     },
     orderBy: { startDate: "asc" },
   });
@@ -35,6 +36,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
   const { title, location, startDate, endDate, status, description, quote, heroMedia: heroMediaData, galleryItems, slug: customSlug,
+    locations: locationsList,
     // Legacy compat
     heroMediaPath: legacyHeroPath, galleryPaths: legacyGalleryPaths } = body;
 
@@ -100,9 +102,20 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Create trip locations (map markers)
+    if (Array.isArray(locationsList)) {
+      for (const loc of locationsList) {
+        if (typeof loc.lat === "number" && typeof loc.lng === "number") {
+          await tx.tripLocation.create({
+            data: { tripId: newTrip.id, lat: loc.lat, lng: loc.lng, label: loc.label || null, category: loc.category || null },
+          });
+        }
+      }
+    }
+
     return tx.trip.findUnique({
       where: { id: newTrip.id },
-      include: { heroMedia: true, media: true },
+      include: { heroMedia: true, media: true, locations: true },
     });
   });
 

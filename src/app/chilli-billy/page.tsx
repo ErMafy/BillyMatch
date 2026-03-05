@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 export default async function ChilliBillyPage() {
   const trips = await prisma.trip.findMany({
-    include: { heroMedia: true, media: true },
+    include: { heroMedia: true, media: true, locations: true },
     orderBy: { startDate: "asc" },
   });
 

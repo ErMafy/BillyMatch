@@ -2,9 +2,22 @@
 
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
+import dynamic from "next/dynamic";
 import { TripCard } from "@/components/chilli-billy/trip-card";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
+
+const TravelMap = dynamic(
+  () => import("@/components/chilli-billy/travel-map"),
+  { ssr: false, loading: () => <div className="w-full h-[300px] sm:h-[400px] lg:h-[500px] rounded-xl bg-card border border-border animate-pulse" /> }
+);
+
+interface TripLocationData {
+  lat: number;
+  lng: number;
+  label: string | null;
+  category: string | null;
+}
 
 interface Trip {
   id: string;
@@ -17,6 +30,7 @@ interface Trip {
   description: string;
   quote?: string | null;
   heroMedia?: { kind: "IMAGE" | "VIDEO"; path: string } | null;
+  locations?: TripLocationData[];
 }
 
 const tabs = [
@@ -43,17 +57,52 @@ export function ChilliBillyClient({ trips }: { trips: Trip[] }) {
           t.location.toLowerCase().includes(q)
       );
     }
-    // Always oldest -> newest (startDate ASC)
     return result.sort(
       (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
     );
   }, [trips, activeTab, search]);
 
+  // Collect all trip locations for the map
+  const mapPins = useMemo(() => {
+    const pins: { lat: number; lng: number; label: string | null; category: string | null; tripTitle: string; tripSlug: string }[] = [];
+    for (const trip of trips) {
+      if (trip.locations) {
+        for (const loc of trip.locations) {
+          pins.push({ lat: loc.lat, lng: loc.lng, label: loc.label, category: loc.category, tripTitle: trip.title, tripSlug: trip.slug });
+        }
+      }
+    }
+    return pins;
+  }, [trips]);
+
   return (
     <div className="space-y-8">
-      {/* Cinematic Hero */}
+      {/* ── HERO with Background Media ── */}
       <section className="relative w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] overflow-hidden">
-        <div className="relative flex flex-col items-center justify-center py-20 sm:py-28 md:py-36 text-center px-4 bg-gradient-to-b from-black via-zinc-900/90 to-background">
+        {/* Background media */}
+        <div className="absolute inset-0">
+          <video
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover"
+            poster="/chilli-billy/hero/hero.jpg"
+          >
+            <source src="/chilli-billy/hero/hero.mp4" type="video/mp4" />
+          </video>
+          {/* Fallback image via poster + noscript */}
+          <img
+            src="/chilli-billy/hero/hero.jpg"
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover hidden"
+            aria-hidden="true"
+          />
+          {/* Dark gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-background" />
+        </div>
+
+        <div className="relative flex flex-col items-center justify-center h-[320px] sm:h-[420px] md:h-[520px] text-center px-4">
           <motion.h1
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -66,9 +115,9 @@ export function ChilliBillyClient({ trips }: { trips: Trip[] }) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.2 }}
-            className="text-lg sm:text-xl text-amber-400 font-bold drop-shadow-lg mb-2"
+            className="text-lg sm:text-xl md:text-2xl text-amber-400 font-bold drop-shadow-lg mb-2"
           >
-            Le avventure della crew
+            I NOSTRI VIAGGI
           </motion.p>
           <motion.p
             initial={{ opacity: 0 }}
@@ -81,7 +130,28 @@ export function ChilliBillyClient({ trips }: { trips: Trip[] }) {
         </div>
       </section>
 
-      {/* Filters */}
+      {/* ── Intro Text ── */}
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.3 }}
+        className="text-center max-w-2xl mx-auto"
+      >
+        <p className="text-muted-foreground text-base sm:text-lg leading-relaxed">
+          Da Napoli a Marrakech, da Amsterdam a Bodrum — ogni viaggio una storia leggendaria.
+          Esplora la mappa per scoprire tutte le tappe della crew. 🌍
+        </p>
+      </motion.section>
+
+      {/* ── Travel Map ── */}
+      {mapPins.length > 0 && (
+        <section>
+          <h2 className="text-xl font-bold text-center mb-4">🗺️ Mappa dei Viaggi</h2>
+          <TravelMap pins={mapPins} />
+        </section>
+      )}
+
+      {/* ── Filters ── */}
       <div className="flex flex-col sm:flex-row items-center gap-3 justify-between">
         <div className="flex gap-1 flex-wrap">
           {tabs.map((tab) => (
@@ -109,7 +179,7 @@ export function ChilliBillyClient({ trips }: { trips: Trip[] }) {
         </div>
       </div>
 
-      {/* Timeline */}
+      {/* ── Timeline ── */}
       {filtered.length === 0 ? (
         <div className="text-center py-16">
           <p className="text-muted-foreground text-lg">Nessun viaggio trovato 🌵</p>
@@ -121,7 +191,6 @@ export function ChilliBillyClient({ trips }: { trips: Trip[] }) {
         </div>
       ) : (
         <div className="relative">
-          {/* Timeline line */}
           <div className="hidden md:block absolute left-1/2 top-0 bottom-0 w-0.5 bg-border -translate-x-1/2" />
 
           <div className="space-y-6 md:space-y-0">
@@ -133,7 +202,6 @@ export function ChilliBillyClient({ trips }: { trips: Trip[] }) {
                 transition={{ duration: 0.5, delay: i * 0.08 }}
                 className="md:grid md:grid-cols-2 md:gap-8 md:py-4"
               >
-                {/* On even indices, card on the left. On odd, on the right */}
                 {i % 2 === 0 ? (
                   <>
                     <div className="md:pr-8">
