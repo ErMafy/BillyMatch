@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
-import { motion } from "framer-motion";
+import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion";
 import dynamic from "next/dynamic";
 import { TripCard } from "@/components/chilli-billy/trip-card";
 import { HighlightReel } from "@/components/chilli-billy/highlight-reel";
@@ -156,52 +156,82 @@ export function ChilliBillyClient({
   const openFullscreen = useCallback(() => setFullscreen(true), []);
   const closeFullscreen = useCallback(() => setFullscreen(false), []);
 
+  /* ── Parallax Effect for Hero ─────────────────────────────────── */
+  const heroRef = useRef<HTMLElement>(null);
+  const prefersReducedMotion = useReducedMotion();
+  const { scrollY } = useScroll();
+  const parallaxY = useTransform(scrollY, [0, 600], [0, prefersReducedMotion ? 0 : 50]);
+
   return (
     <div className="space-y-8">
       {/* ── HERO ───────────────────────────────────────────────────── */}
-      <section className="relative w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] overflow-hidden">
-        <div className="absolute inset-0">
-          <video
-            autoPlay
-            muted
-            loop
-            playsInline
-            className="absolute inset-0 w-full h-full object-cover"
-            poster="/chilli-billy/hero/hero.jpg"
-          >
-            <source src="/chilli-billy/hero/hero.mp4" type="video/mp4" />
-          </video>
-          <img
-            src="/chilli-billy/hero/hero.jpg"
-            alt=""
-            className="absolute inset-0 w-full h-full object-cover hidden"
-            aria-hidden="true"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-background" />
-        </div>
+      <section 
+        ref={heroRef}
+        className="relative w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] overflow-hidden"
+      >
+        {/* Parallax Background Container */}
+        <motion.div 
+          className="absolute inset-0"
+          style={{ y: parallaxY }}
+        >
+          {/* Extra height for parallax movement */}
+          <div className="absolute inset-0 -top-[60px] -bottom-[60px]">
+            <video
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="absolute inset-0 w-full h-full object-cover"
+              poster="/chilli-billy/hero/hero.jpg"
+            >
+              <source src="/chilli-billy/hero/hero.mp4" type="video/mp4" />
+            </video>
+            <img
+              src="/chilli-billy/hero/hero.jpg"
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover hidden"
+              aria-hidden="true"
+            />
+          </div>
+        </motion.div>
 
-        <div className="relative flex flex-col items-center justify-center h-[320px] sm:h-[420px] md:h-[520px] text-center px-4">
+        {/* Cinematic Gradient Overlay */}
+        <div 
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: `linear-gradient(
+              to top,
+              rgba(0,0,0,0.78) 0%,
+              rgba(0,0,0,0.52) 30%,
+              rgba(0,0,0,0.22) 58%,
+              transparent 82%
+            )`
+          }}
+        />
+
+        {/* Hero Content - Positioned Lower */}
+        <div className="relative flex flex-col items-center justify-end h-[320px] sm:h-[420px] md:h-[520px] text-center px-4 pb-10 sm:pb-14 md:pb-20">
           <motion.h1
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7 }}
-            className="text-4xl sm:text-5xl md:text-7xl font-extrabold text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.8)] mb-3"
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.8)] mb-2 tracking-tight"
           >
-            🌶️ EL CHILLI BILLY
+            EL CHILLI BILLY
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.2 }}
-            className="text-lg sm:text-xl md:text-2xl text-amber-400 font-bold drop-shadow-lg mb-2"
+            transition={{ duration: 0.8, delay: 0.15, ease: "easeOut" }}
+            className="text-base sm:text-lg md:text-xl lg:text-2xl text-amber-400 font-bold drop-shadow-lg mb-1.5 tracking-wide"
           >
             I NOSTRI VIAGGI
           </motion.p>
           <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.7, delay: 0.5 }}
-            className="text-sm text-amber-200/70 font-mono"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
+            className="text-xs sm:text-sm text-amber-200/70 font-mono"
           >
             Dal primo viaggio all&apos;ultimo delirio
           </motion.p>
