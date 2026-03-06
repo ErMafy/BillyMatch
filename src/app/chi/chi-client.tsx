@@ -354,13 +354,35 @@ export function ChiClient({
     <div className="space-y-8">
       {/* ── HERO ───────────────────────────────────────────────────── */}
       <section className="relative w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-black via-black/95 to-background" />
-        <div className="relative flex flex-col items-center justify-center h-[300px] sm:h-[360px] text-center px-4">
+        {/* Hero Background Image */}
+        <div className="absolute inset-0">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/chi-hero.png"
+            alt="Chi? - Prison Lineup"
+            className="w-full h-full object-cover object-top"
+          />
+        </div>
+        {/* Gradient Overlay */}
+        <div 
+          className="absolute inset-0"
+          style={{
+            background: `linear-gradient(
+              to top,
+              rgba(0,0,0,0.85) 0%,
+              rgba(0,0,0,0.5) 40%,
+              rgba(0,0,0,0.2) 70%,
+              transparent 90%
+            )`
+          }}
+        />
+        {/* Hero Content */}
+        <div className="relative flex flex-col items-center justify-end h-[300px] sm:h-[360px] md:h-[420px] text-center px-4 pb-8 sm:pb-10 md:pb-12">
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
-            className="text-6xl sm:text-7xl md:text-8xl font-black text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.8)] mb-4 tracking-tight"
+            className="text-6xl sm:text-7xl md:text-8xl font-black text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.8)] mb-3 tracking-tight"
           >
             CHI?
           </motion.h1>
@@ -368,18 +390,17 @@ export function ChiClient({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
-            className="text-sm sm:text-base md:text-lg text-amber-400/90 font-medium leading-relaxed space-y-0.5"
+            className="text-sm sm:text-base md:text-lg text-amber-400 font-medium leading-relaxed space-y-0.5"
           >
             <p>Chi guida?</p>
             <p>Chi paga?</p>
             <p>Chi si sacrifica?</p>
-            <p>Chi prende il campo migliore?</p>
           </motion.div>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4, ease: "easeOut" }}
-            className="text-xs sm:text-sm text-amber-200/60 font-mono mt-4"
+            className="text-xs sm:text-sm text-amber-200/70 font-mono mt-3"
           >
             Decide il ferro.
           </motion.p>
