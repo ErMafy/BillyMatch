@@ -14,6 +14,7 @@ const navItems = [
   { href: "/match", label: "Match" },
   { href: "/scommesse", label: "Scommesse" },
   { href: "/chilli-billy", label: "El Chilli Billy" },
+  { href: "/chi", label: "Chi?" },
   { href: "/admin", label: "Admin" },
 ];
 

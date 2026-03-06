@@ -155,3 +155,22 @@ model TripMedia {
 
   heroOf    Trip?     @relation("HeroMedia")
 }
+
+// ─── CHI? Decision Maker ───
+
+enum DecisionMode {
+  PLAYER
+  TEAM
+}
+
+model DecisionHistory {
+  id         String       @id @default(cuid())
+  mode       DecisionMode
+  question   String
+  resultName String
+  resultId   String?
+  createdAt  DateTime     @default(now())
+
+  @@index([mode])
+  @@index([createdAt])
+}
